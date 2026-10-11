@@ -186,7 +186,9 @@ def coletar_mares_do_ano(ano: int) -> pd.DataFrame:
     for mes in range(1, 13):
         print(f"Coletando marés do mês {mes:02d}/{ano}...")
 
-        dados_form = {"fecha": f"{mes:02d}"}
+        data_consulta = f"{ano}-{mes:02d}-01"
+
+        dados_form = {"fecha": data_consulta}
         html = baixar_html(URL_BASE, dados_post=dados_form)
 
         eventos_mes = parsear_mares(html, ano, mes)
@@ -231,6 +233,24 @@ def main(ano: int = 2025) -> None:
     caminho_vento = DIR_RAW / "vento.csv"
     df_vento.to_csv(caminho_vento, index=False, encoding="utf-8")
     print(f"-> {len(df_vento)} linhas salvas em {caminho_vento.name}")
+
+
+
+def testar_formulario_mares():
+    html = baixar_html(URL_BASE)
+    soup = BeautifulSoup(html, "html.parser")
+
+    for formulario in soup.find_all("form"):
+        print("\nFORMULÁRIO")
+        print("Ação:", formulario.get("action"))
+        print("Método:", formulario.get("method"))
+
+        for campo in formulario.find_all(["input", "select"]):
+            print(
+                "Tipo:", campo.name,
+                "| Nome:", campo.get("name"),
+                "| Valor:", campo.get("value")
+            )
 
 
 if __name__ == "__main__":
