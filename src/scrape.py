@@ -15,7 +15,7 @@ seguintes (ver README).
 
 Rodar com: uv run python src/scrape.py
 """
-import re
+
 import time
 from datetime import datetime
 from pathlib import Path
@@ -117,12 +117,19 @@ def parsear_mares(html: str, ano: int, mes: int) -> list[dict]:
     return eventos
 
 
-def parsear_previsao(html: str, ano: int) -> list[dict]:
+def parsear_previsao(html: str, ano: int, tipo: str) -> list[dict]:
     """Extrai leituras horárias das páginas de previsão de onda e de vento."""
     soup = BeautifulSoup(html, "html.parser")
     dados_previsao = []
 
-    tipo = "ondas" if "ola" in html.lower() or "onda" in html.lower() else "vento"
+    if tipo not in ("ondas", "vento"):
+        raise ValueError("O tipo deve ser 'ondas' ou 'vento'.")
+
+    classe_valor = (
+        "graf_color_oleaje" if tipo == "ondas"
+        else "graf_color_velocidad"
+    )
+
 
     meses_map = {
         "jan": 1, "fev": 2, "mar": 3, "abr": 4, "mai": 5, "jun": 6,
@@ -153,8 +160,8 @@ def parsear_previsao(html: str, ano: int) -> list[dict]:
                 hora = textos_hora[0].get_text(strip=True)
                 direcao = textos_hora[1].get_text(strip=True) if len(textos_hora) > 1 else None
 
-                barra_grafico = bloco.find("div", class_="grafico_temp_barra_relleno")
-                valor_medido = barra_grafico.get_text(strip=True) if barra_grafico else None
+                valor_tag = bloco.find("div", class_=classe_valor)
+                valor_medido = valor_tag.get_text(strip=True) if valor_tag else None
 
                 data_hora = f"{ano}-{mes_num:02d}-{dia_num:02d} {hora}"
                 evento = {"data_hora": data_hora}
@@ -210,7 +217,7 @@ def main(ano: int = 2025) -> None:
     # 3. Previsão de Ondas  -> ondas.csv
     print("Coletando previsão de ondas...")
     html_ondas = baixar_html(URL_ONDAS)
-    dados_ondas = parsear_previsao(html_ondas, hoje.year)
+    dados_ondas = parsear_previsao(html_ondas, hoje.year, tipo="ondas")
     df_ondas = pd.DataFrame(dados_ondas)
     caminho_ondas = DIR_RAW / "ondas.csv"
     df_ondas.to_csv(caminho_ondas, index=False, encoding="utf-8")
@@ -219,7 +226,7 @@ def main(ano: int = 2025) -> None:
     # 4. Previsão de Vento  -> vento.csv
     print("Coletando previsão de vento...")
     html_vento = baixar_html(URL_VENTO)
-    dados_vento = parsear_previsao(html_vento, hoje.year)
+    dados_vento = parsear_previsao(html_vento, hoje.year, tipo="vento")
     df_vento = pd.DataFrame(dados_vento)
     caminho_vento = DIR_RAW / "vento.csv"
     df_vento.to_csv(caminho_vento, index=False, encoding="utf-8")
